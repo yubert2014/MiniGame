@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- 文字コード　-->
+    <meta charset="utf-8">
+
+    <!-- タイトル -->
+    <title></title>
+</head>
+<body>
+<canvas id = "canvas1"></canvas>
+<script type="text/javascript">
+
+    // 設定
+    const CANVAS_WIDTH = 200;
+    const CANVAS_HEIGHT = 300;
+
+    // バーの移動速度
+    const BarVerocity = 4;
+
+    // ブロックサイズ
+    const BLOCK_WIDTH = 20;
+    const BLOCK_HEIGHT = 4;
+
+    // 背景
+    var BACKGROUND_COLOR = 'rgb(0, 0, 0)';
+
+    // キャンバス要素を取得
+    var cvs1 = document.getElementById("canvas1");
+    // コンテキストを取得
+    var ctx = cvs1.getContext("2d");
+
+    // サイズ変更
+    cvs1.width = CANVAS_WIDTH;
+    cvs1.height = CANVAS_HEIGHT;
+
+    // 色を変更
+    ctx.fillStyle = BACKGROUND_COLOR;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // タイマー
+    var timer;
+
+    // バー
+    var Bar = function() {
+        // 座標
+        this.x = 150;
+        this.y = 240;
+
+        // 幅、高さ
+        this.width = 20;
+        this.height = 6;
+
+        // 描く
+        this.draw = function() {
+            ctx.fillStyle = 'rgb(255, 0, 0)';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+
+        // 移動
+        this.move = function(_dx) {
+            if((_dx <= 0 && this.x + _dx >= 0) || (_dx >= 0 && this.x + _dx + this.width <= CANVAS_WIDTH)) {
+                this.x += _dx;
+            }
+        }
+
+        // クリア
+        this.clear = function() {
+            ctx.fillStyle = BACKGROUND_COLOR;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+
+    // ボール
+    var Ball = function() {
+        // 座標
+        this.x = 30;
+        this.y = 100;
+
+        // 速さ
+        this.vx = -1;
+        this.vy = -1;
+
+        // サイズ
+        this.radius = 4;
+
+        // 終了フラグ
+        this.endFrag = false;
+
+        // 移動
+        this.move = function()
+        {
+            if((this.vx <= 0 && this.x + this.vx <= 0) || (this.vx >= 0 && this.x + this.vx + this.radius >= CANVAS_WIDTH)){
+                this.vx = -this.vx;
+            }
+//            if((this.vy <= 0 && this.y + this.vy <= 0) || (this.vy >= 0 && this.y + this.vy + this.radius >= CANVAS_HEIGHT)) {
+            if(this.vy <= 0 && this.y + this.vy <= 0)
+            {
+                this.vy = -this.vy;
+            }
+            // ゲームオーバー処理
+            if(this.vy >= 0 && this.y + this.vy + this.radius >= CANVAS_HEIGHT) {
+                this.endFrag = true;
+            }
+
+            this.x += this.vx;
+            this.y += this.vy;
+        }
+
+        // 描く
+        this.draw = function() {
+            ctx.fillStyle = 'rgb(255, 0, 0)';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // クリア
+        this.clear = function() {
+            ctx.fillStyle = BACKGROUND_COLOR;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // ブロック
+    var Block = function(_x, _y) {
+        // 座標
+        this.x = _x;
+        this.y = _y;
+
+        // 幅、高さ
+        this.width = BLOCK_WIDTH;
+        this.height = BLOCK_HEIGHT;
+
+        // 描く
+        this.draw = function() {
+            ctx.fillStyle = 'rgb(0, 255, 0)';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+
+    // 本体
+    var Game = function()
+    {
+        // バー
+        var bar = new Bar();
+        // ボール
+        var ball = new Ball();
+        // ブロック
+        var block = [];
+        for(var i = 0;i < 10;i++) {
+            block[i] = [];
+            for(var j = 0;j < 10;j++) {
+                block[i][j] = new Block(i*BLOCK_WIDTH, j*BLOCK_HEIGHT);
+            }
+        }
+
+        // イベントを設定
+        document.onkeydown = function(e) {
+            switch (e.keyCode) {
+                case 37:
+                    bar.clear();
+                    bar.move(-BarVerocity);
+                    bar.draw();
+                    break;
+                case 39:
+                    bar.clear();
+                    bar.move(BarVerocity);
+                    bar.draw();
+                    break;
+            }
+        }
+
+        // 描く
+        this.draw = function()
+        {
+            // バーを描画
+            bar.draw();
+            // ボールを描画
+            ball.draw();
+            // ブロックを描画
+            for(var i = 0;i < block.length;i++) {
+                for(var j = 0;j < block[i].length;j++) {
+                    block[i][j].draw();
+                }
+            }
+        }
+
+        // アップデート
+        this.update =function() {
+
+            // 衝突処理（ボールとブロック）
+            for(var i = 0;i < block.length;i++) {
+                for(var j = 0;j < block[i].length;j++) {
+                    // nullは飛ばす
+                    if(block[i][j] == null) {
+                        continue;
+                    }
+
+                    // 衝突
+                    if( block[i][j].x <= ball.x + ball.vx && ball.x + ball.vx <= block[i][j].x + block[i][j].width
+                            && block[i][j].y <= ball.y + ball.vy && ball.y + ball.vy <= block[i][j].y + block[i][j].height)
+                    {
+                        if(ball.x <= block[i][j].x || block[i][j].x + block[i][j].width <= ball.x) {
+                            ball.vx = -ball.vx;
+                        }
+                        if( ball.y <= block[i][j].y || block[i][j].y + block[i][j].height <=  ball.y) {
+                            ball.vy = -ball.vy;
+                        }
+
+                        block[i][j] = null;
+                    }
+                }
+            }
+            // 衝突処理（バーとボール）
+            if( bar.x <= ball.x + ball.vx && ball.x + ball.vx <= bar.x + bar.width
+                    && bar.y <= ball.y + ball.vy && ball.y + ball.vy <= bar.y + bar.height) {
+                ball.vy = -ball.vy;
+            }
+
+            // 移動
+            ball.clear();
+            ball.move();
+
+            if(ball.endFrag == true) {
+                clearInterval(timer);
+                alert("ゲームオーバー");
+            }
+
+            // 再描画
+            for(var i = 0;i < block.length;i++) {
+                for(var j = 0;j < block[i].length;j++) {
+                    // nullは飛ばす
+                    if(block[i][j] == null) {
+                        continue;
+                    }
+
+                    // 再描画
+                    block[i][j].draw();
+                }
+            }
+
+            if(ball != null) {
+                ball.draw();
+            }
+
+            bar.draw();
+        }
+    }
+
+    // 実行
+    var game = new Game();
+    timer = setInterval('game.update()', 20);
+
+</script>
+</body>
+</html>
